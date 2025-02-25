@@ -15,9 +15,9 @@ const signInWithOtp = async () => {
 
 <template>
   <div>
-    <UButton :ui="{ rounded: 'rounded-full' }" @click="signInWithOtp">
+    <button class="btn btn-primary" @click="signInWithOtp">
       Sign In with E-Mail
-    </UButton>
+    </button>
     <input
       v-model="email"
       type="email"
