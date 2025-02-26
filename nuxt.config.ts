@@ -3,7 +3,10 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
   modules: ['@nuxtjs/supabase', '@nuxtjs/color-mode'],
-  css: ['bootstrap/dist/css/bootstrap.css'],
+  css: [
+    'bootstrap/dist/css/bootstrap.css',
+    'bootstrap-icons/font/bootstrap-icons.css'
+  ],
   plugins: [
     { src: '~/plugins/bootstrap.js', mode: 'client' }
   ],
