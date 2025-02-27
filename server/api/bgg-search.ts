@@ -1,27 +1,5 @@
 import { parseStringPromise } from 'xml2js';
 
-interface BGGGame {
-  $: {
-    id: string;
-  };
-  name?: {
-    $: {
-      value: string;
-    };
-  };
-  yearpublished?: {
-    $: {
-      value: string;
-    };
-  };
-}
-
-interface BGGResponse {
-  items?: {
-    item?: BGGGame[];
-  };
-}
-
 export default defineEventHandler(async (event) => {
   const query = String(getQuery(event).title); // Prende il titolo dal parametro ?title=
   if (!query) {

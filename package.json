@@ -11,6 +11,8 @@
     "start": "nuxt start"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.2.2",
+    "@dicebear/core": "^9.2.2",
     "@nuxtjs/color-mode": "^3.5.2",
     "@nuxtjs/supabase": "^1.4.6",
     "@popperjs/core": "^2.11.8",
@@ -19,6 +21,7 @@
     "nuxt": "^3.15.4",
     "vue": "latest",
     "vue-router": "latest",
+    "vuetify": "^3.7.14",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {

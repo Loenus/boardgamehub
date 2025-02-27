@@ -15,6 +15,11 @@ const signOut = async () => {
   if (error) console.log(error)
 }
 
+const { value: user } = useSupabaseUser()
+const userId = user ? user.id : null
+console.log(user)
+console.log(userId)
+
 </script>
 
 <style>
