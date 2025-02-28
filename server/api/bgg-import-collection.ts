@@ -1,6 +1,7 @@
 import { parseStringPromise } from 'xml2js';
 import { supabase } from '../utils/supabase'
 import { getUser } from '../utils/getUser'
+import { BoardGame } from '../../types/bgg';
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
@@ -19,112 +20,80 @@ export default defineEventHandler(async (event) => {
 
   try {
     // 1. recupero tutti i giochi posseduti dall'utente su bgg FATTO
-    const gamesOwned = await retrieveGamesOwned(username as string);
+    const gamesOwnedUrl =  `https://boardgamegeek.com/xmlapi2/collection?username=${username}&own=1&stats=1`;
+    const gamesOwnedXmlData = await $fetch<string>(gamesOwnedUrl);
+    const gamesOwned: BoardGame[] = await parseBoardGameCollection(gamesOwnedXmlData);
     if (!gamesOwned) return { error: 'No games found in collection' };
+    console.log(gamesOwned);
   
     // 2. mi assicuro siano tutti già presenti nel db FATTO
-    const all_bgg_ids_owned = gamesOwned.map(game => parseInt(game.objectId));
+    const allBggIdsOwned = gamesOwned.map(game => game.id);
     const { data: missingIds, error: missingIdsError } = await supabase
-      .rpc('get_missing_bgg_ids', { bgg_ids: all_bgg_ids_owned });
+      .rpc('get_missing_bgg_ids', { bgg_ids: allBggIdsOwned });
     console.log('id mancanti: ' + missingIds.length + " -> " + missingIds)
     if (missingIdsError) return { error: missingIdsError.message };
 
-    const gamesToInsert = await retrieveAllInfoForGames(missingIds);
+    let gamesToInsert = gamesOwned.filter(game => missingIds.includes(game.id));
     await insertGamesInDB(gamesToInsert);
+
     // 3. aggiungo la relazione "posseduto da" tra questo utente e il bgg_id
-    const relationsToInsert = gamesOwned.map(game => ({
+    const ownershipsToInsert = gamesOwned.map(game => ({
       user_id: user.id,
-      bgg_id: game.objectId,
+      bgg_id: game.id,
     }));
 
-    const { data: relationData, error: relationError } = await supabase
+    const { data: ownershipData, error: ownershipError } = await supabase
       .from('ownership')
-      .upsert(relationsToInsert.slice(0, 2), { onConflict: 'user_id,bgg_id' });
-    console.log(relationData);
-    console.log(relationError);
-    if (relationError) {
-      return { error: relationError.message };
+      .upsert(ownershipsToInsert.slice(0, 3), { onConflict: 'user_id,bgg_id' });
+    console.log(ownershipData);
+    console.log(ownershipError);
+    if (ownershipError) {
+      return { error: ownershipError.message };
     }
 
-    // 4. recupero i giochi che l'utente corrente ha valutato
-    // 5. aggiungo la relazione "valutato da" tra questo utente e il bgg_id
+    // 4. aggiungo la relazione "valutato da" tra questo utente e il bgg_id
+    const ratingsToInsert = gamesOwned
+      .filter(game => game.rating != null && !isNaN(game.rating))
+      .map(game => ({
+        user_id: user.id,
+        bgg_id: game.id,
+        rating: game.rating,
+      }));
+    console.log(ratingsToInsert.length);
+    console.log(ratingsToInsert);
+    const { data: ratingData, error: ratingError } = await supabase
+      .from('ratings')
+      .upsert(ratingsToInsert.slice(0, 3), { onConflict: 'user_id,bgg_id' });
+    console.log(ratingData);
+    console.log(ratingError);
+    if (ratingError) {
+      return { error: ratingError.message };
+    }
 
-    return { success: true, inserted: gamesToInsert.length };
+    // 5. (Opzionale) recupero i giochi che l'utente corrente ha valutato 
+    //TODO FEATURE FUTURA
+
+    return { success: true, inserted: gamesOwned.length };
   } catch (error) {
     return { error: 'Failed to fetch or process data' };
   }
 });
 
-function chunkArray<T>(array: T[], chunkSize: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < array.length; i += chunkSize) {
-    chunks.push(array.slice(i, i + chunkSize));
-  }
-  return chunks;
-}
 
-function getPrimaryName(name: any): string {
-  if (Array.isArray(name)) {
-    const primaryName = name.find(n => n.$.type === 'primary');
-    return primaryName ? primaryName.$.value : 'Unknown';
-  } else if (name && name.$.type === 'primary') {
-    return name.$.value;
-  }
-  return 'Unknown';
-}
 
-async function retrieveGamesOwned(username: string) {
-  const response = await fetch(`https://boardgamegeek.com/xmlapi2/collection?username=${username}&own=1`); //&rated=1 recupera solo i giochi valutati
-  const xmlData = await response.text();
-  
-  // Parsing XML -> JSON
-  const jsonData: BGGResponse2 = await parseStringPromise(xmlData, { explicitArray: false });
-  if (!jsonData.items || !jsonData.items.item) {
-    return null;
-  }
-
-  const games = Array.isArray(jsonData.items.item) ? jsonData.items.item : [jsonData.items.item];
-  const formattedGames = games.map((game: BGGGame2) => ({
-    id: game.$.id,
-    objectId: game.$.objectid,
-    name: game.name?._ || 'Unknown',
-    bgg_link: `https://boardgamegeek.com/boardgame/${game.$.objectid}`,
-  }));
-  return formattedGames;
-}
-
-async function retrieveAllInfoForGames(missingIds: number[]) {
-  // Suddividere l'array di missingIds in blocchi di massimo 20 ID
-  const missingIdsChunks = chunkArray(missingIds, 20);
-  const singleGames: any[] = [];
-  for (const chunk of missingIdsChunks) {
-    const url = `https://boardgamegeek.com/xmlapi2/thing?id=${chunk.join(',')}`;
-    console.log(url);
-    const response2 = await fetch(url);
-    const xmlData2 = await response2.text();
-    const jsonData2: BGGResponse2 = await parseStringPromise(xmlData2, { explicitArray: false });
-    if (jsonData2.items && jsonData2.items.item) {
-      const chunkGames = Array.isArray(jsonData2.items.item) ? jsonData2.items.item : [jsonData2.items.item];
-      singleGames.push(...chunkGames);
-    }
-  }
-  return singleGames;
-}
-
-async function insertGamesInDB(singleGames: any[]) {
-  const gamesToInsert = singleGames.map((game: SingleBGGGame) => ({
-    bgg_id: parseInt(game.$.id),
-    name: getPrimaryName(game.name),
-    min_players: game.minplayers?.$?.value ? parseInt(game.minplayers.$.value) : 0,
-    max_players: game.maxplayers?.$?.value ? parseInt(game.maxplayers.$.value) : 0,
-    bgg_link: `https://boardgamegeek.com/boardgame/${game.$.id}`,
+async function insertGamesInDB(singleGames: BoardGame[]) {
+  const gamesToInsert = singleGames.map((game: BoardGame) => ({
+    bgg_id: game.id,
+    name: game.name,
+    min_players: game.minPlayers,
+    max_players: game.maxPlayers,
+    bgg_link: `https://boardgamegeek.com/boardgame/${game.id}`,
   }));
   console.log(gamesToInsert.length)
   console.log(gamesToInsert);
 
   // Inserire i giochi nel DB Supabase
   const firstGame = gamesToInsert[0];
-  //const { error } = await supabase.from('board_games').upsert(firstGame, { onConflict: 'id' }).select();
   const { data, error: error3 } = await supabase
     .from('boardgames')
     .upsert(firstGame, { onConflict: 'bgg_id' })
@@ -135,3 +104,38 @@ async function insertGamesInDB(singleGames: any[]) {
     return { error: error3.message };
   }
 }
+
+
+async function parseBoardGameCollection(xmlData: string): Promise<BoardGame[]> {
+  try {
+    const jsonData = await parseStringPromise(xmlData, { explicitArray: false });
+
+    if (!jsonData.items || !jsonData.items.item) {
+      return [];
+    }
+
+    const items = Array.isArray(jsonData.items.item) ? jsonData.items.item : [jsonData.items.item];
+
+    return items.map((item: any) => ({
+      id: Number(item.$.objectid),
+      name: item.name?._ || "Unknown",
+      yearPublished: item.yearpublished ? Number(item.yearpublished) : undefined,
+      image: item.image || undefined,
+      thumbnail: item.thumbnail || undefined,
+      rating: item.stats?.rating?.$?.value ? parseFloat(item.stats.rating.$.value) : undefined, // Rating dell'utente
+      minPlayers: item.stats?.$?.minplayers ? Number(item.stats.$.minplayers) : undefined,
+      maxPlayers: item.stats?.$?.maxplayers ? Number(item.stats.$.maxplayers) : undefined,
+      owned: item.status?.$?.own === "1",
+      wishlist: item.status?.$?.wishlist === "1",
+      wantToPlay: item.status?.$?.wanttoplay === "1",
+      wantToBuy: item.status?.$?.wanttobuy === "1",
+      preordered: item.status?.$?.preordered === "1",
+      numPlays: item.numplays ? Number(item.numplays) : 0
+    }));
+  } catch (error) {
+    console.error("Errore nel parsing XML:", error);
+    return [];
+  }
+}
+
+
