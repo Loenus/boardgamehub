@@ -1,92 +1,83 @@
 <template>
-  <div class="d-flex justify-content-center align-items-center vh-100 bg-dark">
-    <div class="card p-4 text-light bg-secondary" style="width: 400px; border-radius: 10px;">
-      <h3 class="text-center">Create an account</h3>
-      <p class="text-center">
-        Already have an account? <a href="/login" class="text-info">Login</a>.
-      </p>
-      
-      <button class="btn btn-outline-light w-100 mb-2">
-        <i class="bi bi-google"></i> Google
-      </button>
-      <button class="btn btn-outline-light w-100 mb-3">
-        <i class="bi bi-github"></i> GitHub
-      </button>
-
-      <div class="text-center text-light my-2">or</div>
-
-      <form @submit.prevent="register">
+  <div class="position-relative vh-100">
+    <a href="/" class="btn btn-primary rounded-circle position-absolute top-0 start-0 m-4">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div class="d-flex flex-column justify-content-center align-items-center h-100 px-5 px-md-5">
+      <h1 class="text-center mb-4">Sign Up</h1>
+      <form @submit.prevent="handleSubmit" class="w-100" style="max-width: 400px;">
         <div class="mb-3">
-          <label class="form-label">Name</label>
-          <input v-model="name" type="text" class="form-control" placeholder="Enter your name">
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Email</label>
-          <input v-model="email" type="email" class="form-control" placeholder="Enter your email">
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Password</label>
           <div class="input-group">
-            <input :type="showPassword ? 'text' : 'password'" v-model="password" class="form-control" placeholder="Enter your password">
+            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+            <input v-model="email" type="email" class="form-control" id="email" placeholder="Enter your email" aria-label="Email address">
+          </div>
+        </div>
+        <div class="mb-3">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input v-model="password" :type="showPassword ? 'text' : 'password'" class="form-control" id="password" placeholder="Enter your password" aria-label="Password">
             <button class="btn btn-outline-light" type="button" @click="togglePassword">
               <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
             </button>
           </div>
         </div>
-
-        <button type="submit" class="btn btn-primary w-100">Create account</button>
+        <div class="mb-3">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input v-model="confirmPassword" :type="showPassword ? 'text' : 'password'" class="form-control" id="confirm-password" placeholder="Confirm password" aria-label="Confirm password">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100 mb-3">Sign Up</button>
+        <div class="d-flex justify-content-end">
+          <a href="/login" class="text-decoration-none">Login</a>
+        </div>
       </form>
-
-      <p class="text-center mt-3">
-        By signing up, you agree to our <a href="#" class="text-info">Terms of Service</a>.
-      </p>
     </div>
   </div>
 </template>
 
-<script>
-const supabase = useSupabaseClient();
+<script lang="ts" setup>
+const supabase = useSupabaseClient()
+const email = ref<string>('');
+const password = ref<string>('');
+const confirmPassword = ref<string>(''); 
+const showPassword = ref<boolean>(false); // ref => proprietà reattiva, vue reagisce al cambiamento
 
-const signUp = async () => {
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email.value,
-    options: {
-      emailRedirectTo: 'http://localhost:3000/confirm',
-    }
-  })
-  if (error) console.log(error)
+function handleSubmit() {
+  console.log('Email:', email.value);
+  console.log('Password:', password.value);
+  console.log('Confirm Password:', confirmPassword.value);
+  //TODO: check sulla complessità delle password (realtime)
+  //TODO: check se le due password coincidono (realtime?)
+  
+  signUpWithEmail(email.value, password.value);
 }
 
-export default {
-  data() {
-    return {
-      name: '',
-      email: '',
-      password: '',
-      showPassword: false,
-    };
-  },
-  methods: {
-    async register() {
-      console.log("Registering:", this.name, this.email, this.password);
-      let { data, error } = await supabase.auth.signUp({
-        email: this.email,
-        password: this.password
-      })
-      if (error) console.log(error);
-      console.log(data);
-    },
-    togglePassword() {
-      this.showPassword = !this.showPassword;
+async function signUpWithEmail(email: string, password: string) {
+  console.log("SONO DENTROOOOO" + email + password);
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: "http://localhost:3000/profile"
     }
+  });
+  console.log(data, error);
+
+  if (error) {
+    console.error("Errore nella registrazione:", error.message);
+  } else {
+    console.log("Registrazione avvenuta! Email di conferma inviata.");
   }
+}
+
+const togglePassword = () => {
+  console.log("Toggling password visibility");
+  showPassword.value = !showPassword.value;
+  console.log("Password visibility:", showPassword);
 };
 </script>
 
-<style>
-.card {
-  background-color: #1e1e2f !important;
-}
+<style scoped>
+/* Stili personalizzati opzionali */
 </style>
