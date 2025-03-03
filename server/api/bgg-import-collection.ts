@@ -58,12 +58,13 @@ export default defineEventHandler(async (event) => {
         user_id: user.id,
         bgg_id: game.id,
         rating: game.rating,
+        migrateToBGG: false,
       }));
     console.log(ratingsToInsert.length);
     console.log(ratingsToInsert);
     const { data: ratingData, error: ratingError } = await supabase
       .from('ratings')
-      .upsert(ratingsToInsert.slice(0, 3), { onConflict: 'user_id,bgg_id' });
+      .upsert(ratingsToInsert.slice(0, 4), { onConflict: 'user_id,bgg_id' });
     console.log(ratingData);
     console.log(ratingError);
     if (ratingError) {

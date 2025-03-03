@@ -25,6 +25,18 @@
         </div>
       </div>
 
+      <!-- Filtro per nome -->
+      <div class="mb-3 col-12 col-md-6">
+        <label for="nameFilter" class="form-label">Filtra per nome:</label>
+        <input
+          id="nameFilter"
+          type="text"
+          class="form-control"
+          v-model="nameFilter"
+          placeholder="Cerca per nome"
+        />
+      </div>
+
       <div v-if="loading" class="text-secondary">Caricamento...</div>
       <div v-else-if="error" class="text-danger">Errore: {{ error }}</div>
 
@@ -81,27 +93,42 @@ onMounted(async () => {
 });
 
 const selectedPlayers = ref<(number | string)[]>([]); // Supporta sia numeri che la stringa '12+'
+const nameFilter = ref('');
 
 // Trova il numero massimo di giocatori tra i giochi
 const maxPlayers = computed(() => Math.max(...games.value.map(game => game.max_players), 0));
 
 // Filtro dei giochi in base alla selezione
 const filteredGames = computed(() => {
-  return games.value.filter(game => {
-    // Se la selezione include limitMaxPlayerFilter+1 (verifica se max_players >= limitMaxPlayerFilter+1)
-    const isPlusSelected = selectedPlayers.value.includes(`${limitMaxPlayerFilter + 1}`);
-    if (isPlusSelected && game.max_players <= limitMaxPlayerFilter) {
-      return false;  // Se limitMaxPlayerFilter+1 è selezionato, ma il gioco ha max_players <= limitMaxPlayerFilter, non lo includere
-    }
+  let filtered = games.value;
 
-    // Verifica che il gioco soddisfi tutti i numeri selezionati
-    return selectedPlayers.value.every(playerCount => {
-      if (typeof playerCount === 'number') {
-        return playerCount >= game.min_players && playerCount <= game.max_players;
+  // Filtro per il nome
+  if (nameFilter.value) {
+  filtered = filtered.filter(game =>
+      game.name.toLowerCase().includes(nameFilter.value.toLowerCase())
+    );
+  }
+
+  // Filtro per il numero di giocatori
+  if (selectedPlayers.value !== null) {
+    filtered = filtered.filter(game => {
+      // Se la selezione include limitMaxPlayerFilter+1 (verifica se max_players >= limitMaxPlayerFilter+1)
+      const isPlusSelected = selectedPlayers.value.includes(`${limitMaxPlayerFilter + 1}`);
+      if (isPlusSelected && game.max_players <= limitMaxPlayerFilter) {
+        return false;  // Se limitMaxPlayerFilter+1 è selezionato, ma il gioco ha max_players <= limitMaxPlayerFilter, non lo includere
       }
-      return true; // Ignora la stringa per il filtro limitMaxPlayerFilter+1
+
+      // Verifica che il gioco soddisfi tutti i numeri selezionati
+      return selectedPlayers.value.every(playerCount => {
+        if (typeof playerCount === 'number') {
+          return playerCount >= game.min_players && playerCount <= game.max_players;
+        }
+        return true; // Ignora la stringa per il filtro limitMaxPlayerFilter+1
+      });
     });
-  });
+  }
+
+  return filtered;
 });
 
 
