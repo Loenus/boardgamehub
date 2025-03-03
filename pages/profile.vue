@@ -6,6 +6,45 @@
     <h1 class="text-center">{{ userEmail }}</h1>
     <div class="mt-5 container">
       <h2 class="mb-3">Collection</h2>
+
+      <!-- Aggiungi un nuovo gioco -->
+      <div class="container mb-3 mt-4 position-relative">
+        <h5>Aggiungi un gioco</h5>
+
+        <!-- Input di ricerca con icona -->
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-search"></i> <!-- Icona di ricerca -->
+          </span>
+          <input 
+            v-model="searchQuery"
+            placeholder="Enter game title"
+            class="form-control"
+            @focus="showDropdown = true"
+            @input="handleInput"
+            @blur="hideDropdown"
+          />
+          <span v-if="loadingSearch" class="input-group-text">
+            <div class="spinner-border spinner-border-sm text-primary"></div> <!-- Loader -->
+          </span>
+        </div>
+
+        <!-- Dropdown con i risultati -->
+        <ul v-if="showDropdown && gamesBGG.length" class="dropdown-menu show w-100">
+          <li v-for="game in gamesBGG" :key="game.id" class="dropdown-item d-flex align-items-center">
+            <!-- Pulsante "+" spostato a sinistra -->
+            <button class="btn btn-sm btn-primary me-2" @click="addGameToCollection(game.id)">
+              +
+            </button>
+            
+            <a :href="'https://boardgamegeek.com/boardgame/' + game.id" target="_blank" class="text-decoration-none">
+              <strong>{{ game.name }}</strong> ({{ game.year }})
+            </a>
+          </li>
+        </ul>
+
+        <p v-if="showDropdown && searchQuery && !gamesBGG.length && !loadingSearch" class="text-muted mt-2">No results found.</p>
+      </div>
       
       <!-- Filtro per numero di giocatori -->
       <div class="mb-3">
@@ -61,6 +100,11 @@
 
 <script lang="ts" setup>
 import { useRouter, useRoute } from 'vue-router';
+import debounce from 'lodash/debounce';
+const searchQuery = ref('');
+const gamesBGG = ref([]);
+const showDropdown = ref(false);
+const loadingSearch = ref(false);
 const limitMaxPlayerFilter :number = 12;
 
 interface Game {
@@ -91,6 +135,9 @@ onMounted(async () => {
     await fetchGames();
   }
 });
+
+
+/* FILTRI */
 
 const selectedPlayers = ref<(number | string)[]>([]); // Supporta sia numeri che la stringa '12+'
 const nameFilter = ref('');
@@ -131,6 +178,76 @@ const filteredGames = computed(() => {
   return filtered;
 });
 
+
+/* AGGIUNGI GIOCO */
+
+// Funzione per aggiungere il gioco alla collezione
+async function addGameToCollection(gameId: number) {
+  try {
+    console.log('ENTRATOOOO con gameId: ', gameId);
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      errorMessage.value = 'Token non disponibile. Effettua il login.';
+      return;
+    }
+
+    const token = session.access_token;
+    const response = await $fetch<{ status: number; body: any }>('/api/add-game', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ gameId })
+    });
+    
+    if (response.status !== 200) {
+      error.value = response.body.error;
+    } else {
+      console.log('Gioco aggiunto con successo:', response.body.data);
+      await fetchGames(); // Ricarica la lista dei giochi per aggiornare il possesso
+    }
+  } catch (error) {
+    console.error("Errore nell'aggiungere il gioco", error);
+    alert('Si è verificato un errore.');
+  }
+}
+
+// Funzione per cercare giochi su BGG con debounce
+const searchGame = debounce(async () => {
+  if (!searchQuery.value) {
+    gamesBGG.value = [];
+    showDropdown.value = false;
+    return;
+  }
+  
+  loadingSearch.value = true;
+  const { data } = await useFetch(`/api/bgg-search?title=${searchQuery.value}`);
+
+  if (data.value?.games) {
+    gamesBGG.value = data.value.games;
+  } else {
+    gamesBGG.value = [];
+  }
+
+  loadingSearch.value = false;
+}, 650); // Aspetta Xms prima di eseguire la richiesta API
+
+// Gestione dell'input
+const handleInput = () => {
+  showDropdown.value = true;
+  searchGame();
+};
+
+// Nasconde il dropdown se si clicca fuori
+const hideDropdown = () => {
+  setTimeout(() => {
+    showDropdown.value = false;
+  }, 200);
+};
+
+
+/* PRIMA PARTE */
 
 const errorMessage = ref('');
 
