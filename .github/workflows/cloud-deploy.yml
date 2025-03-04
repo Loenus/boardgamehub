@@ -1,8 +1,7 @@
 name: Deploy to Cloud VPS
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches: [ master ]
   workflow_dispatch:
 jobs:
   deploy:
@@ -18,7 +17,7 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           key: ${{ secrets.VPS_SSH_KEY }}
           source: "."
-          target: "${{ secrets.VPS_PROJECT_PATH }}"
+          target: "${{ secrets.VPS_PROJECT_PATH }}" #esempio home: /home/user/
 
       - name: Create .env file on VPS
         uses: appleboy/ssh-action@master #Executing remote command
