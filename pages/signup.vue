@@ -85,6 +85,7 @@ async function signUpWithEmail(email: string, password: string) {
     console.error("Errore nella registrazione:", error.message);
   } else {
     console.log("Registrazione avvenuta! Email di conferma inviata.");
+    alert("Email di registrazione inviata! Cliccare sul link mandato per email e fai login.")
   }
 }
 

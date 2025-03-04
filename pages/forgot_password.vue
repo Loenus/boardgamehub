@@ -38,6 +38,7 @@ async function sendResetEmail(email: string) {
     console.error("Errore nel send email:", error.message);
   } else {
     console.log("Email mandata!", data);
+    alert("Email di reset password inviata! controlla la tua casella elettronica.")
   }
 }
 </script>

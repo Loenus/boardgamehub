@@ -27,7 +27,7 @@
           <a href="/signup" class="text-decoration-none">Sign up</a>
         </div>
         <hr>
-        <button type="button" class="btn btn-outline-primary w-100">Log in with Google</button>
+        <button disabled type="button" class="btn btn-outline-primary w-100">Log in with Google</button>
       </form>
     </div>
   </div>
