@@ -25,6 +25,9 @@
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-lock"></i></span>
             <input v-model="confirmPassword" :type="showPassword ? 'text' : 'password'" class="form-control" id="confirm-password" placeholder="Confirm password" aria-label="Confirm password">
+            <button class="btn btn-outline-light" type="button" @click="togglePassword">
+              <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+            </button>
           </div>
         </div>
         <button type="submit" class="btn btn-primary w-100 mb-3">Sign Up</button>
@@ -49,17 +52,31 @@ function handleSubmit() {
   console.log('Confirm Password:', confirmPassword.value);
   //TODO: check sulla complessità delle password (realtime)
   //TODO: check se le due password coincidono (realtime?)
+  if (password.value !== confirmPassword.value) {
+    alert('le due password non sono uguali')
+    return;
+  }
   
   signUpWithEmail(email.value, password.value);
 }
 
 async function signUpWithEmail(email: string, password: string) {
+  
+  if (process.server) {
+    console.log("Sto girando lato SERVER");
+  }
+  if (process.client) {
+    console.log("Sto girando lato CLIENT");
+  }
+
+  const url = useRequestURL();
+  const host = url.origin;
   console.log("SONO DENTROOOOO" + email + password);
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: "http://localhost:3000/profile"
+      emailRedirectTo: `${host}/profile`
     }
   });
   console.log(data, error);

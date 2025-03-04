@@ -15,12 +15,15 @@
         <div class="mb-3">
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-lock"></i></span>
-            <input v-model="password" type="password" class="form-control" id="password" placeholder="Enter your password" aria-label="Password">
+            <input v-model="password" :type="showPassword ? 'text' : 'password'" class="form-control" id="password" placeholder="Enter your password" aria-label="Password">
+            <button class="btn btn-outline-light" type="button" @click="togglePassword">
+              <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+            </button>
           </div>
         </div>
         <button type="submit" class="btn btn-primary w-100 mb-3">Login</button>
         <div class="d-flex justify-content-between mb-3">
-          <a href="#" class="text-decoration-none">Forgot password?</a>
+          <a href="/forgot_password" class="text-decoration-none">Forgot password?</a>
           <a href="/signup" class="text-decoration-none">Sign up</a>
         </div>
         <hr>
@@ -35,6 +38,13 @@ const router = useRouter()
 const supabase = useSupabaseClient()
 const email = ref<string>('');
 const password = ref<string>('');
+const showPassword = ref<boolean>(false);
+
+const togglePassword = () => {
+  console.log("Toggling password visibility");
+  showPassword.value = !showPassword.value;
+  console.log("Password visibility:", showPassword);
+};
 
 function handleSubmit() {
   console.log('Email:', email.value);

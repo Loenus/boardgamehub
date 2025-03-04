@@ -2,7 +2,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
-  modules: ['@nuxtjs/supabase', '@nuxtjs/color-mode'],
+  modules: ['@nuxtjs/supabase', '@nuxtjs/color-mode', 'nuxt-security'],
   css: [
     'bootstrap/dist/css/bootstrap.css',
     'bootstrap-icons/font/bootstrap-icons.css'
@@ -10,12 +10,17 @@ export default defineNuxtConfig({
   plugins: [
     { src: '~/plugins/bootstrap.js', mode: 'client' }
   ],
+  security: {
+    corsHandler: {
+        origin: '*'
+    }
+  },
   supabase: {
     redirectOptions: {
       login: '/login',
       callback: '/confirm', //TODO controllare se serve ...
       include: undefined,
-      exclude: ['/', '/signup'],
+      exclude: ['/', '/signup', '/forgot_password', '/update_password'],
       cookieRedirect: true, //redirection to the initial requested route after login
     }
   },
