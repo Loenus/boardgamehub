@@ -45,6 +45,23 @@
 
         <p v-if="showDropdown && searchQuery && !gamesBGG.length && !loadingSearch" class="text-muted mt-2">No results found.</p>
       </div>
+
+      <!-- import from BGG -->
+      <div class="d-flex align-items-center w-100">
+        <span class="me-2 text-nowrap">Search BGG user:</span> <!-- Il testo ha la sua dimensione naturale -->
+        <input type="text" 
+          class="form-control flex-grow-1 me-2"
+          v-model="username"
+          placeholder="Enter BGG username"
+          @keyup.enter="fetchCollection"
+        /> <!-- 60% dello spazio -->
+        <button @click="fetchCollection" class="btn btn-primary flex-grow-0" style="width: 40%;">
+          <span v-if="loading" class="spinner-border spinner-border-sm"></span>
+          Import Collection
+        </button> <!-- 40% dello spazio -->
+      </div>
+
+      <hr>
       
       <!-- Filtro per numero di giocatori -->
       <div class="mb-3">
@@ -135,6 +152,52 @@ onMounted(async () => {
     await fetchGames();
   }
 });
+
+
+/* IMPORT BGG COLLECTION */
+
+const username = ref('');
+const fetchCollection = async () => {
+  if (!username.value) {
+    alert('Inserisci un username!');
+    return;
+  }
+
+  loading.value = true;
+  errorMessage.value = '';
+  
+  try {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      errorMessage.value = 'Token non disponibile. Effettua il login.';
+      loading.value = false;
+      return;
+    }
+
+    const token = session.access_token;
+    const response = await $fetch(`/api/bgg-import-collection?username=${username.value}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    //games.value = response.data || [];
+    if (!response.success) {
+      alert('cìè stato un errore nel backend');
+    } else {
+      alert('collection di '+ username.value +' recuperata correttamente!');
+      await fetchGames(); // Ricarica la lista dei giochi per aggiornare il possesso
+    }
+  } catch (error) {
+    errorMessage.value = 'Errore nel recupero dei dati';
+    console.log(error);
+    alert(error);
+    games.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
 
 
 /* FILTRI */

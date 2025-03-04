@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
 
     const { data: ownershipData, error: ownershipError } = await supabase
       .from('ownership')
-      .upsert(ownershipsToInsert.slice(0, 3), { onConflict: 'user_id,bgg_id' });
+      .upsert(ownershipsToInsert, { onConflict: 'user_id,bgg_id' });
     console.log(ownershipData);
     console.log(ownershipError);
     if (ownershipError) {
@@ -64,7 +64,7 @@ export default defineEventHandler(async (event) => {
     console.log(ratingsToInsert);
     const { data: ratingData, error: ratingError } = await supabase
       .from('ratings')
-      .upsert(ratingsToInsert.slice(0, 4), { onConflict: 'user_id,bgg_id' });
+      .upsert(ratingsToInsert, { onConflict: 'user_id,bgg_id' });
     console.log(ratingData);
     console.log(ratingError);
     if (ratingError) {
@@ -94,10 +94,9 @@ async function insertGamesInDB(singleGames: BoardGame[]) {
   console.log(gamesToInsert);
 
   // Inserire i giochi nel DB Supabase
-  const firstGame = gamesToInsert[0];
   const { data, error: error3 } = await supabase
     .from('boardgames')
-    .upsert(firstGame, { onConflict: 'bgg_id' })
+    .upsert(gamesToInsert, { onConflict: 'bgg_id' })
     .select()
   console.log(data)
   console.log(error3)
