@@ -2,8 +2,32 @@
   <button class="btn btn-primary mt-3 ms-3" @click="signOut">
     Sign out
   </button>
-  <div class="container mt-5">
+  <div class="container mt-5" style="padding-bottom: 50px">
     <h1 class="text-center">{{ userEmail }}</h1>
+    
+    <div class="mt-5 container">
+      <h2 class="mb-3">Teams</h2>
+      <div class="w-50 mx-auto">
+        <input 
+          v-model="teamName" 
+          type="text" 
+          class="form-control mb-3"
+          placeholder="Enter team name"
+        />
+        <div class="d-flex gap-2">
+          <button @click="createTeam" class="btn btn-primary w-50">Create</button>
+          <button @click="joinTeam" class="btn btn-success w-50">Join</button>
+        </div>
+        <ul class="list-group mt-4 w-100">
+          <li v-for="team in teams" :key="team.team_id" class="list-group-item w-100">
+            <NuxtLink :to="`/team/${team.team_id}`" class="text-decoration-none">
+              {{ team.team_name }}
+            </NuxtLink>
+          </li>
+        </ul>
+      </div>
+    </div>
+    
     <div class="mt-5 container">
       <h2 class="mb-3">Collection</h2>
 
@@ -48,7 +72,7 @@
 
       <!-- import from BGG -->
       <div class="d-flex align-items-center w-100">
-        <span class="me-2 text-nowrap">Search BGG user:</span> <!-- Il testo ha la sua dimensione naturale -->
+        <span class="me-2 text-nowrap">Search <br> BGG user:</span> <!-- Il testo ha la sua dimensione naturale -->
         <input type="text" 
           class="form-control flex-grow-1 me-2"
           v-model="username"
@@ -150,8 +174,89 @@ onMounted(async () => {
   if (user.value) {
     userEmail.value = user.value.email;
     await fetchGames();
+    await fetchTeams();
   }
 });
+
+
+/* TEAMS */
+const teamName = ref('');
+interface Team {
+  id: number;
+  name: string
+}
+const teams = ref<Team[]>([]);
+
+async function createTeam() {
+  console.log(teamName.value)
+  if (teamName.value === null) return;
+  const nameTeam = teamName.value;
+
+  try {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      errorMessage.value = 'Token non disponibile. Effettua il login.';
+      return;
+    }
+
+    const token = session.access_token;
+    const response = await $fetch<{ status: number; body: any }>('/api/add-team', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ nameTeam })
+    });
+
+    if (response.status !== 200) {
+      error.value = response.body.error;
+    } else {
+      console.log('Rating aggiunto con successo:', response.body.data);
+      await fetchTeams();
+    }
+  } catch (err) {
+    error.value = 'Errore durante l\'aggiunta del rating';
+  }
+}
+
+async function joinTeam() {
+  console.log(teamName.value)
+  if (teamName.value === null) return;
+  const nameTeam = teamName.value;
+  
+  //TODO fare il join
+}
+
+async function fetchTeams() {
+  try {
+    errorMessage.value = '';
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      errorMessage.value = 'Token non disponibile. Effettua il login.';
+      return;
+    }
+
+    const token = session.access_token;
+    const response = await $fetch<{ status: number; body: any }>('/api/retrieve-user-teams', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (response.status !== 200) {
+      error.value = "errrorrrr";
+    } else {
+      console.log(response.body);
+      teams.value = response.body;
+    }
+    console.log(teams.value)
+    
+  } catch (err) {
+    error.value = "error";
+  }
+}
+
 
 
 /* IMPORT BGG COLLECTION */
