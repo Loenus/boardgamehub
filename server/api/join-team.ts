@@ -20,21 +20,26 @@ export default defineEventHandler(async (event) => {
     };
   }
 
+  // 1. cerca nel db se esiste un team con quel name
   const { data, error } = await supabase
     .from('teams')
-    .upsert({ name: nameTeam }, { onConflict: ' id' })
-    .select()
-    .single();
+    .select('*')
+    .eq('name', nameTeam)
+    .single(); // Restituisce un solo oggetto invece di un array
 
   if (error) {
+    console.error("Errore nel recupero del team:", error.message);
     return {
       status: 500,
       body: { error: error.message }
     };
+  } else {
+    console.log("Team trovato:", data);
   }
 
-  const teamId = JSON.parse(JSON.stringify(data, null, 2)).id
+  const teamId = data.id
 
+  // 2. crea la relazione
   const { data: data2, error: error2 } = await supabase
     .from('team_members')
     .upsert({ user_id: user.id, team_id: teamId }, { onConflict: 'user_id, team_id' });

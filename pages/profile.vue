@@ -212,7 +212,7 @@ async function createTeam() {
     if (response.status !== 200) {
       error.value = response.body.error;
     } else {
-      console.log('Rating aggiunto con successo:', response.body.data);
+      console.log('Team member aggiunto con successo:', response.body.data);
       await fetchTeams();
     }
   } catch (err) {
@@ -225,7 +225,33 @@ async function joinTeam() {
   if (teamName.value === null) return;
   const nameTeam = teamName.value;
   
-  //TODO fare il join
+  try {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      errorMessage.value = 'Token non disponibile. Effettua il login.';
+      return;
+    }
+
+    const token = session.access_token;
+    const response = await $fetch<{ status: number; body: any }>('/api/join-team', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ nameTeam })
+    });
+
+    if (response.status !== 200) {
+      error.value = response.body.error;
+      alert(error.value)
+    } else {
+      console.log('Team member aggiunto con successo:', response.body.data);
+      await fetchTeams();
+    }
+  } catch (err) {
+    error.value = 'Errore durante l\'aggiunta del rating';
+  }
 }
 
 async function fetchTeams() {
